@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integer Knapsack Solver</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="number"], input[type="text"], select {
+            width: calc(100% - 10px);
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .items-list {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .items-list th, .items-list td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .items-list th {
+            background-color: #f2f2f2;
+        }
+        .solution {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Integer Knapsack Solver</h1>
+    <div class="input-group">
+        <label for="capacity">Knapsack Capacity (integer):</label>
+        <input type="number" id="capacity" placeholder="Enter capacity">
+    </div>
+    <div class="input-group">
+        <label for="name">Item Name:</label>
+        <input type="text" id="name" placeholder="Enter item name">
+    </div>
+    <div class="input-group">
+        <label for="weight">Weight (integer):</label>
+        <input type="number" id="weight" placeholder="Enter weight">
+    </div>
+    <div class="input-group">
+        <label for="value">Value (integer):</label>
+        <input type="number" id="value" placeholder="Enter value">
+    </div>
+    <button onclick="addItem()">Add Item</button>
+    <button onclick="saveEdit()" id="save-button" style="display:none;">Save Changes</button>
+    
+    <table class="items-list">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Weight</th>
+                <th>Value</th>
+                <th>Ratio</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+    </table>
+    <button onclick="solveKnapsack()">Solve Knapsack</button>
+
+    <div class="solution" id="solution"></div>
+</div>
+
+<script>
+    let items = [
+        { name: "Book", weight: 1, value: 150 },
+        { name: "Pencil", weight: 1, value: 30 },
+        { name: "Laptop", weight: 2, value: 500 },
+        { name: "Phone", weight: 1, value: 300 }
+    ];
+    let currentEditIndex = null;
+
+    function renderItems() {
+        const tbody = document.getElementById('items-body');
+        tbody.innerHTML = "";
+        items.forEach((item, index) => {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = item.name;
+            row.insertCell(1).innerText = item.weight;
+            row.insertCell(2).innerText = item.value;
+            row.insertCell(3).innerText = (item.value / item.weight).toFixed(2);
+            const actionsCell = row.insertCell(4);
+            actionsCell.innerHTML = `<button onclick="editItem(${index})">Edit</button> <button onclick="deleteItem(${index})">Delete</button>`;
+        });
+    }
+
+    function addItem() {
+        const name = document.getElementById('name').value.trim();
+        const weight = parseInt(document.getElementById('weight').value);
+        const value = parseInt(document.getElementById('value').value);
+        
+        if (!name || isNaN(weight) || isNaN(value) || weight <= 0 || value <= 0) {
+            alert("Please enter valid item details!");
+            return;
+        }
+
+        items.push({ name, weight, value });
+        renderItems();
+        clearFields();
+    }
+
+    function editItem(index) {
+        const item = items[index];
+        document.getElementById('name').value = item.name;
+        document.getElementById('weight').value = item.weight;
+        document.getElementById('value').value = item.value;
+        
+        currentEditIndex = index;  // Set the current edit index
+        document.getElementById('save-button').style.display = 'inline';  // Show save button
+        document.querySelector('button[onclick="addItem()"]').style.display = 'none';  // Hide add button
+    }
+
+    function saveEdit() {
+        const name = document.getElementById('name').value.trim();
+        const weight = parseInt(document.getElementById('weight').value);
+        const value = parseInt(document.getElementById('value').value);
+        
+        if (!name || isNaN(weight) || isNaN(value) || weight <= 0 || value <= 0) {
+            alert("Please enter valid item details!");
+            return;
+        }
+
+        items[currentEditIndex] = { name, weight, value };  // Update the item
+        renderItems();
+        clearFields();
+        currentEditIndex = null;  // Reset the edit index
+        document.getElementById('save-button').style.display = 'none';  // Hide save button
+        document.querySelector('button[onclick="addItem()"]').style.display = 'inline';  // Show add button
+    }
+
+    function deleteItem(index) {
+        items.splice(index, 1);
+        renderItems();
+    }
+
+    function clearFields() {
+        document.getElementById('name').value = "";
+        document.getElementById('weight').value = "";
+        document.getElementById('value').value = "";
+    }
+
+    function knapsack(W, items) {
+        const n = items.length;
+        const dp = Array.from({ length: n + 1 }, () => Array(W + 1).fill(0));
+
+        for (let i = 1; i <= n; i++) {
+            for (let w = 0; w <= W; w++) {
+                if (items[i - 1].weight <= w) {
+                    dp[i][w] = Math.max(
+                        items[i - 1].value + dp[i - 1][w - items[i - 1].weight],
+                        dp[i - 1][w]
+                    );
+                } else {
+                    dp[i][w] = dp[i - 1][w];
+                }
+            }
+        }
+
+        const selected = [];
+        let w = W;
+        for (let i = n; i > 0; i--) {
+            if (dp[i][w] !== dp[i - 1][w]) {
+                selected.push(i - 1);
+                w -= items[i - 1].weight;
+            }
+        }
+        return [dp[n][W], selected];
+    }
+
+    function solveKnapsack() {
+        const capacity = parseInt(document.getElementById('capacity').value);
+        if (capacity <= 0) {
+            alert("Capacity must be a positive integer!");
+            return;
+        }
+        if (items.length === 0) {
+            alert("Please add some items first!");
+            return;
+        }
+
+        const [maxValue, selectedItems] = knapsack(capacity, items);
+        const solutionDiv = document.getElementById('solution');
+        solutionDiv.innerHTML = `<strong>Maximum value achievable:</strong> ${maxValue}<br><strong>Selected items:</strong><br>`;
+        
+        let totalWeight = 0;
+        selectedItems.forEach(idx => {
+            const item = items[idx];
+            totalWeight += item.weight;
+            solutionDiv.innerHTML += `${item.name} (Weight: ${item.weight}, Value: ${item.value}, Ratio: ${(item.value / item.weight).toFixed(2)})<br>`;
+        });
+        
+        solutionDiv.innerHTML += `<br><strong>Total Weight Used:</strong> ${totalWeight}/${capacity}<br>`;
+        solutionDiv.innerHTML += `<strong>Total Value:</strong> ${maxValue}`;
+    }
+
+    // Initial rendering of predefined items
+    renderItems();
+</script>
+
+</body>
+</html>
